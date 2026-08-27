@@ -1,4 +1,4 @@
-<img width="184" height="679" alt="image" src="https://github.com/user-attachments/assets/c61540a0-06df-4740-8565-dcac243f850b" /># 💰 FinanceTracker
+># 💰 FinanceTracker
 
 A personal finance management Web API built with **C# and ASP.NET Core**.
 
