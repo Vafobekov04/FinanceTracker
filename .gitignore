@@ -1,0 +1,24 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# Build
+bin/
+obj/
+
+# Rider / JetBrains
+.idea/
+
+# Environment variables
+.env
+
+# User secrets
+secrets.json
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
