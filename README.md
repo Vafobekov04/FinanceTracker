@@ -1,4 +1,4 @@
-# 💰 FinanceTracker
+<img width="184" height="679" alt="image" src="https://github.com/user-attachments/assets/c61540a0-06df-4740-8565-dcac243f850b" /># 💰 FinanceTracker
 
 A personal finance management Web API built with **C# and ASP.NET Core**.
 
@@ -72,87 +72,12 @@ The project is being developed as a portfolio project with a focus on clean arch
 The project follows a layered architecture designed to separate business logic, application logic, infrastructure, and API responsibilities.
 
 
-FinanceTracker
-│
-├── FinanceTracker.API
-│   ├── Controllers
-│   ├── DTOs
-│   └── Program.cs
-│
-├── FinanceTracker.Application
-│   ├── Services
-│   ├── Interfaces
-│   └── DTOs
-│
-├── FinanceTracker.Domain
-│   ├── Entities
-│   └── Enums
-│
-└── FinanceTracker.Infrastructure
-    ├── Data
-    ├── Repositories
-    └── Migrations
-Request Flow
-Client
-   │
-   ▼
-ASP.NET Core Web API
-   │
-   ▼
-Controllers
-   │
-   ▼
-Application Layer
-   │
-   ▼
-Domain
-   │
-   ▼
-Infrastructure
-   │
-   ▼
-Entity Framework Core
-   │
-   ▼
-PostgreSQL
-🗄️ Database Structure
+<img width="184" height="679" alt="image" src="https://github.com/user-attachments/assets/dad2c0ee-341e-48af-970e-108e912fc044" />
+
 
 The current database contains the following main entities:
 
-┌──────────────┐
-│    Users     │
-├──────────────┤
-│ Id           │
-│ Email        │
-│ PasswordHash │
-│ CreatedAt    │
-└──────┬───────┘
-       │
-       │ 1:N
-       ▼
-┌──────────────┐
-│  Categories  │
-├──────────────┤
-│ Id           │
-│ UserId       │
-│ Name         │
-│ Type         │
-└──────┬───────┘
-       │
-       │ 1:N
-       ▼
-┌──────────────┐
-│ Transactions │
-├──────────────┤
-│ Id           │
-│ UserId       │
-│ CategoryId   │
-│ Amount       │
-│ Description  │
-│ Date         │
-│ Type         │
-└──────────────┘
-🔌 API
+<img width="96" height="518" alt="image" src="https://github.com/user-attachments/assets/7b986565-dbf2-4705-924c-0334fa43d86c" />
 
 The API is documented using Swagger / OpenAPI.
 
