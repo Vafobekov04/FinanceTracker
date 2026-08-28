@@ -1,6 +1,4 @@
-﻿using FinanceTracker.Domain.Enums;
-
-namespace FinanceTracker.Domain.Entities;
+﻿namespace FinanceTracker.Domain.Entities;
 
 public class Transaction
 {
@@ -12,11 +10,11 @@ public class Transaction
 
     public decimal Amount { get; set; }
 
-    public TransactionType Type { get; set; }
-
-    public DateTime Date { get; set; } = DateTime.UtcNow;
+    public string Type { get; set; } = string.Empty;
 
     public string? Description { get; set; }
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public User User { get; set; } = null!;
 

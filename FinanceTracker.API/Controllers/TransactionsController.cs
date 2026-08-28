@@ -1,14 +1,18 @@
-﻿using FinanceTracker.API.DTOs;
+﻿using System.Security.Claims;
+using FinanceTracker.API.DTOs;
+using FinanceTracker.Application.DTOs;
 using FinanceTracker.Domain.Entities;
-using FinanceTracker.Domain.Enums;
 using FinanceTracker.Infrastructure.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+
 
 namespace FinanceTracker.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class TransactionsController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
@@ -18,58 +22,189 @@ public class TransactionsController : ControllerBase
         _context = context;
     }
 
+    // POST: api/Transactions
     [HttpPost]
     public async Task<IActionResult> Create(CreateTransactionDto dto)
     {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (userIdClaim == null)
+        {
+            return Unauthorized();
+        }
+
+        if (!Guid.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        var category = await _context.Categories
+            .FirstOrDefaultAsync(c =>
+                c.Id == dto.CategoryId &&
+                c.UserId == userId);
+
+        if (category == null)
+        {
+            return NotFound("Категория не найдена.");
+        }
+
         var transaction = new Transaction
         {
             Id = Guid.NewGuid(),
-            UserId = dto.UserId,
+            UserId = userId,
             CategoryId = dto.CategoryId,
             Amount = dto.Amount,
+            Type = dto.Type.ToString(),
             Description = dto.Description,
-            Date = dto.Date,
-            Type = dto.Type
+            CreatedAt = DateTime.UtcNow
         };
 
         _context.Transactions.Add(transaction);
 
         await _context.SaveChangesAsync();
 
-        return Ok(transaction);
+        return Ok(new TransactionResponseDto
+        {
+            Id = transaction.Id,
+            Amount = transaction.Amount,
+            Description = transaction.Description,
+            Date = transaction.CreatedAt,
+            Type = transaction.Type,
+            CategoryId = transaction.CategoryId
+        });
     }
+
+    // GET: api/Transactions
     [HttpGet]
-    public async Task<IActionResult> GetAll()
+    public async Task<IActionResult> GetMyTransactions()
     {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (userIdClaim == null)
+        {
+            return Unauthorized();
+        }
+
+        if (!Guid.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized();
+        }
+
         var transactions = await _context.Transactions
-            .Include(t => t.Category)
-            .OrderByDescending(t => t.Date)
+            .Where(t => t.UserId == userId)
+            .OrderByDescending(t => t.CreatedAt)
+            .Select(t => new
+            {
+                t.Id,
+                t.Amount,
+                t.Type,
+                t.Description,
+                Date = t.CreatedAt,
+                t.CategoryId,
+                Category = t.Category == null
+                    ? null
+                    : new
+                    {
+                        t.Category.Id,
+                        t.Category.Name,
+                        t.Category.Type
+                    }
+            })
             .ToListAsync();
 
         return Ok(transactions);
     }
-    [HttpGet("statistics/{userId}")]
-    public async Task<IActionResult> GetStatistics(Guid userId)
+
+    // GET: api/Transactions/{id}
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update(
+        Guid id,
+            UpdateTransactionDto dto)
     {
-        var transactions = await _context.Transactions
-            .Where(t => t.UserId == userId)
-            .ToListAsync();
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-        var totalIncome = transactions
-            .Where(t => t.Type == TransactionType.Income)
-            .Sum(t => t.Amount);
 
-        var totalExpense = transactions
-            .Where(t => t.Type == TransactionType.Expense)
-            .Sum(t => t.Amount);
-
-        var balance = totalIncome - totalExpense;
-
-        return Ok(new
+            if (string.IsNullOrEmpty(userIdClaim))
         {
-            TotalIncome = totalIncome,
-            TotalExpense = totalExpense,
-            Balance = balance
+            return Unauthorized();
+        }
+
+        if (!Guid.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        var transaction = await _context.Transactions
+            .FirstOrDefaultAsync(t =>
+                t.Id == id &&
+                t.UserId == userId);
+
+        if (transaction == null)
+        {
+            return NotFound("Транзакция не найдена.");
+        }
+
+        var category = await _context.Categories
+            .FirstOrDefaultAsync(c =>
+                c.Id == dto.CategoryId &&
+                c.UserId == userId);
+
+        if (category == null)
+        {
+            return NotFound("Категория не найдена.");
+        }
+
+        transaction.CategoryId = dto.CategoryId;
+        transaction.Amount = dto.Amount;
+        transaction.Type = dto.Type.ToString();
+        transaction.Description = dto.Description;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new TransactionResponseDto
+        {
+            Id = transaction.Id,
+            Amount = transaction.Amount,
+            Description = transaction.Description ?? string.Empty,
+            Date = transaction.CreatedAt,
+            Type = transaction.Type,
+            CategoryId = transaction.CategoryId
         });
+
+
+}
+
+
+    // DELETE: api/Transactions/{id}
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (userIdClaim == null)
+        {
+            return Unauthorized();
+        }
+
+        if (!Guid.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        var transaction = await _context.Transactions
+            .FirstOrDefaultAsync(t =>
+                t.Id == id &&
+                t.UserId == userId);
+
+        if (transaction == null)
+        {
+            return NotFound("Транзакция не найдена.");
+        }
+
+        _context.Transactions.Remove(transaction);
+
+        await _context.SaveChangesAsync();
+
+        return Ok("Транзакция удалена.");
     }
 }

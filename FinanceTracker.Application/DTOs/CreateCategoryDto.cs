@@ -1,12 +1,11 @@
 ﻿using FinanceTracker.Domain.Enums;
 
-namespace FinanceTracker.API.DTOs;
+namespace FinanceTracker.Application.DTOs;
 
 public class CreateCategoryDto
 {
-    public Guid UserId { get; set; }
-
     public string Name { get; set; } = string.Empty;
 
-    public TransactionType Type { get; set; }
+
+public CategoryType Type { get; set; }
 }
