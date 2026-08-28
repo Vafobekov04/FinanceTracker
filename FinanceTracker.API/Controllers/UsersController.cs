@@ -1,4 +1,5 @@
 ﻿using FinanceTracker.API.DTOs;
+using FinanceTracker.API.Services;
 using FinanceTracker.Domain.Entities;
 using FinanceTracker.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
@@ -11,10 +12,14 @@ namespace FinanceTracker.API.Controllers;
 public class UsersController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
+    private readonly IJwtService _jwtService;
 
-    public UsersController(ApplicationDbContext context)
+    public UsersController(
+        ApplicationDbContext context,
+        IJwtService jwtService)
     {
         _context = context;
+        _jwtService = jwtService;
     }
 
     [HttpPost("register")]
@@ -28,16 +33,11 @@ public class UsersController : ControllerBase
             return BadRequest("Пользователь с таким email уже существует.");
         }
 
-
-
-        /* Hashing a password*/
-       
-        var passwordHash = BCrypt.Net.BCrypt.HashPassword (dto.Password);
         var user = new User
         {
             Id = Guid.NewGuid(),
             Email = dto.Email,
-            PasswordHash = passwordHash,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
             CreatedAt = DateTime.UtcNow
         };
 
@@ -50,6 +50,36 @@ public class UsersController : ControllerBase
             user.Id,
             user.Email,
             user.CreatedAt
+        });
+    }
+
+    [HttpPost("login")]
+    public async Task<IActionResult> Login(LoginDto dto)
+    {
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.Email == dto.Email);
+
+        if (user == null)
+        {
+            return Unauthorized("Неверный email или пароль.");
+        }
+
+        var passwordValid = BCrypt.Net.BCrypt.Verify(
+            dto.Password,
+            user.PasswordHash);
+
+        if (!passwordValid)
+        {
+            return Unauthorized("Неверный email или пароль.");
+        }
+
+        var token = _jwtService.GenerateToken(user);
+
+        return Ok(new
+        {
+            token,
+            user.Id,
+            user.Email
         });
     }
 }

@@ -14,5 +14,6 @@ public class Category
 
     public User User { get; set; } = null!;
 
-    public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
+    public ICollection<Transaction> Transactions { get; set; }
+        = new List<Transaction>();
 }
