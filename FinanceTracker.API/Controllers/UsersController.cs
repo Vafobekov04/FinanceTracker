@@ -28,11 +28,16 @@ public class UsersController : ControllerBase
             return BadRequest("Пользователь с таким email уже существует.");
         }
 
+
+
+        /* Hashing a password*/
+       
+        var passwordHash = BCrypt.Net.BCrypt.HashPassword (dto.Password);
         var user = new User
         {
             Id = Guid.NewGuid(),
             Email = dto.Email,
-            PasswordHash = dto.Password,
+            PasswordHash = passwordHash,
             CreatedAt = DateTime.UtcNow
         };
 
