@@ -115,6 +115,39 @@ public class TransactionsController : ControllerBase
         return Ok(transactions);
     }
 
+    [HttpGet("recent")]
+    public async Task<IActionResult> GetRecentTransactions(int count = 5)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (!Guid.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        // Защита от слишком большого количества записей
+        count = Math.Clamp(count, 1, 50);
+
+        var transactions = await _context.Transactions
+            .AsNoTracking()
+            .Include(t => t.Category)
+            .Where(t => t.UserId == userId)
+            .OrderByDescending(t => t.CreatedAt)
+            .Take(count)
+            .Select(t => new RecentTransactionDto
+            {
+                Id = t.Id,
+                Amount = t.Amount,
+                Type = t.Type,
+                Description = t.Description,
+                Date = t.CreatedAt,
+                CategoryName = t.Category.Name
+            })
+            .ToListAsync();
+
+        return Ok(transactions);
+    }
+
     // GET: api/Transactions/{id}
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(

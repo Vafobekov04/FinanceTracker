@@ -90,6 +90,48 @@ public StatisticsController(ApplicationDbContext context)
 
         return Ok(result);
     }
+    [HttpGet("monthly")]
+    public async Task<IActionResult> GetMonthlyStatistics(
+        int? year = null)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
+        if (!Guid.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        var selectedYear = year ?? DateTime.UtcNow.Year;
+
+        var transactions = await _context.Transactions
+            .AsNoTracking()
+            .Where(t =>
+                t.UserId == userId &&
+                t.CreatedAt.Year == selectedYear)
+            .GroupBy(t => t.CreatedAt.Month)
+            .Select(g => new
+            {
+                Month = g.Key,
+                Income = g
+                    .Where(t => t.Type == "Income")
+                    .Sum(t => (decimal?)t.Amount) ?? 0,
+
+                Expense = g
+                    .Where(t => t.Type == "Expense")
+                    .Sum(t => (decimal?)t.Amount) ?? 0
+            })
+            .OrderBy(x => x.Month)
+            .ToListAsync();
+
+        var result = transactions.Select(x => new MonthlyStatisticsDto
+        {
+            Year = selectedYear,
+            Month = x.Month,
+            Income = x.Income,
+            Expense = x.Expense
+        });
+
+        return Ok(result);
+    }
 
 }
