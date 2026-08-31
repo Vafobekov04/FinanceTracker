@@ -78,6 +78,7 @@ public CategoriesController(ApplicationDbContext context)
     }
 
     // Создать категорию
+    // async - обрабатывает множество запросов одновременно, не блокируя основной поток
     [HttpPost]
     public async Task<IActionResult> Create(CreateCategoryDto dto)
     {
