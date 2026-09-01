@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
+using FinanceTracker.API.Middleware;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -109,7 +110,16 @@ builder.Services.AddSwaggerGen(options =>
         }
     });
 });
+
 var app = builder.Build();
+
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
 if (app.Environment.IsDevelopment())
 {
