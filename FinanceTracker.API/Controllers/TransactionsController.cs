@@ -79,7 +79,9 @@ public class TransactionsController : ControllerBase
 
     // GET: api/Transactions
     [HttpGet]
-    public async Task<IActionResult> GetMyTransactions()
+    public async Task<IActionResult> GetMyTransactions(
+     int page = 1,
+     int pageSize = 10)
     {
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -88,10 +90,26 @@ public class TransactionsController : ControllerBase
             return Unauthorized();
         }
 
-        var transactions = await _context.Transactions
+        // Защита от неправильных значений
+        page = Math.Max(page, 1);
+        pageSize = Math.Clamp(pageSize, 1, 50);
+
+        var query = _context.Transactions
             .AsNoTracking()
-            .Where(t => t.UserId == userId)
+            .Where(t => t.UserId == userId);
+
+        // Общее количество транзакций
+        var totalCount = await query.CountAsync();
+
+        // Общее количество страниц
+        var totalPages = (int)Math.Ceiling(
+            totalCount / (double)pageSize);
+
+        // Получаем только нужную страницу
+        var transactions = await query
             .OrderByDescending(t => t.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Select(t => new
             {
                 t.Id,
@@ -111,7 +129,14 @@ public class TransactionsController : ControllerBase
             })
             .ToListAsync();
 
-        return Ok(transactions);
+        return Ok(new
+        {
+            page,
+            pageSize,
+            totalCount,
+            totalPages,
+            items = transactions
+        });
     }
 
     // GET: api/Transactions/recent
