@@ -3,6 +3,8 @@ using FinanceTracker.Application.DTOs;
 using FinanceTracker.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Distributed;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.API.Controllers;
@@ -12,12 +14,16 @@ namespace FinanceTracker.API.Controllers;
 [Authorize]
 public class StatisticsController : ControllerBase
 {
+
     private readonly ApplicationDbContext _context;
+    private readonly IDistributedCache _cache;
 
-
-public StatisticsController(ApplicationDbContext context)
+    public StatisticsController(
+        ApplicationDbContext context,
+        IDistributedCache cache)
     {
         _context = context;
+        _cache = cache;
     }
 
     [HttpGet]
@@ -133,5 +139,6 @@ public StatisticsController(ApplicationDbContext context)
 
         return Ok(result);
     }
-
 }
+
+

@@ -4,6 +4,7 @@ using FinanceTracker.Infrastructure.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.Caching.StackExchangeRedis;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -51,7 +52,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = "localhost:6379";
+    options.InstanceName = "FinanceTracker_";
+});
 builder.Services.AddControllers();
+
 
 builder.Services.AddEndpointsApiExplorer();
 

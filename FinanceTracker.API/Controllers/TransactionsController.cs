@@ -6,7 +6,7 @@ using FinanceTracker.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace FinanceTracker.API.Controllers;
 
@@ -16,10 +16,14 @@ namespace FinanceTracker.API.Controllers;
 public class TransactionsController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
+    private readonly IDistributedCache _cache;
 
-    public TransactionsController(ApplicationDbContext context)
+    public TransactionsController(
+        ApplicationDbContext context,
+        IDistributedCache cache)
     {
         _context = context;
+        _cache = cache;
     }
 
     // POST: api/Transactions
@@ -63,11 +67,14 @@ public class TransactionsController : ControllerBase
 
         await _context.SaveChangesAsync();
 
+        // Очищаем кэш статистики после изменения данных
+        await _cache.RemoveAsync($"statistics:{userId}");
+
         return Ok(new TransactionResponseDto
         {
             Id = transaction.Id,
             Amount = transaction.Amount,
-            Description = transaction.Description,
+            Description = transaction.Description ?? string.Empty,
             Date = transaction.CreatedAt,
             Type = transaction.Type,
             CategoryId = transaction.CategoryId
@@ -91,6 +98,7 @@ public class TransactionsController : ControllerBase
         }
 
         var transactions = await _context.Transactions
+            .AsNoTracking()
             .Where(t => t.UserId == userId)
             .OrderByDescending(t => t.CreatedAt)
             .Select(t => new
@@ -115,6 +123,7 @@ public class TransactionsController : ControllerBase
         return Ok(transactions);
     }
 
+    // GET: api/Transactions/recent
     [HttpGet("recent")]
     public async Task<IActionResult> GetRecentTransactions(int count = 5)
     {
@@ -125,7 +134,6 @@ public class TransactionsController : ControllerBase
             return Unauthorized();
         }
 
-        // Защита от слишком большого количества записей
         count = Math.Clamp(count, 1, 50);
 
         var transactions = await _context.Transactions
@@ -148,16 +156,15 @@ public class TransactionsController : ControllerBase
         return Ok(transactions);
     }
 
-    // GET: api/Transactions/{id}
+    // PUT: api/Transactions/{id}
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(
         Guid id,
-            UpdateTransactionDto dto)
+        UpdateTransactionDto dto)
     {
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-
-            if (string.IsNullOrEmpty(userIdClaim))
+        if (string.IsNullOrEmpty(userIdClaim))
         {
             return Unauthorized();
         }
@@ -194,6 +201,9 @@ public class TransactionsController : ControllerBase
 
         await _context.SaveChangesAsync();
 
+        // Очищаем кэш статистики после изменения данных
+        await _cache.RemoveAsync($"statistics:{userId}");
+
         return Ok(new TransactionResponseDto
         {
             Id = transaction.Id,
@@ -203,10 +213,7 @@ public class TransactionsController : ControllerBase
             Type = transaction.Type,
             CategoryId = transaction.CategoryId
         });
-
-
-}
-
+    }
 
     // DELETE: api/Transactions/{id}
     [HttpDelete("{id:guid}")]
@@ -238,6 +245,10 @@ public class TransactionsController : ControllerBase
 
         await _context.SaveChangesAsync();
 
+        // Очищаем кэш статистики после изменения данных
+        await _cache.RemoveAsync($"statistics:{userId}");
+
         return Ok("Транзакция удалена.");
     }
 }
+
