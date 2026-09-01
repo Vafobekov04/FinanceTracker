@@ -77,11 +77,16 @@ public class TransactionsController : ControllerBase
         });
     }
 
+    
     // GET: api/Transactions
-    [HttpGet]
-    public async Task<IActionResult> GetMyTransactions(
-     int page = 1,
-     int pageSize = 10)
+[HttpGet]
+public async Task<IActionResult> GetMyTransactions(
+    int page = 1,
+    int pageSize = 10,
+    string? type = null,
+    Guid? categoryId = null,
+    DateTime? from = null,
+    DateTime? to = null)
     {
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -90,22 +95,50 @@ public class TransactionsController : ControllerBase
             return Unauthorized();
         }
 
-        // Защита от неправильных значений
+        // Защита от неправильных значений пагинации
         page = Math.Max(page, 1);
         pageSize = Math.Clamp(pageSize, 1, 50);
 
+        // Базовый запрос — только транзакции текущего пользователя
         var query = _context.Transactions
             .AsNoTracking()
             .Where(t => t.UserId == userId);
 
-        // Общее количество транзакций
+        // Фильтр по типу: Income / Expense
+        if (!string.IsNullOrWhiteSpace(type))
+        {
+            query = query.Where(t => t.Type == type);
+        }
+
+        // Фильтр по категории
+        if (categoryId.HasValue)
+        {
+            query = query.Where(t => t.CategoryId == categoryId.Value);
+        }
+
+        // Фильтр от даты
+        if (from.HasValue)
+        {
+            query = query.Where(t => t.CreatedAt >= from.Value);
+        }
+
+        // Фильтр до даты
+        if (to.HasValue)
+        {
+            // Включаем весь указанный день
+            var endDate = to.Value.Date.AddDays(1);
+
+            query = query.Where(t => t.CreatedAt < endDate);
+        }
+
+        // Общее количество после применения фильтров
         var totalCount = await query.CountAsync();
 
-        // Общее количество страниц
+        // Количество страниц
         var totalPages = (int)Math.Ceiling(
             totalCount / (double)pageSize);
 
-        // Получаем только нужную страницу
+        // Получаем нужную страницу
         var transactions = await query
             .OrderByDescending(t => t.CreatedAt)
             .Skip((page - 1) * pageSize)
@@ -135,9 +168,19 @@ public class TransactionsController : ControllerBase
             pageSize,
             totalCount,
             totalPages,
+            filters = new
+            {
+                type,
+                categoryId,
+                from,
+                to
+            },
             items = transactions
         });
     }
+
+
+
 
     // GET: api/Transactions/recent
     [HttpGet("recent")]
