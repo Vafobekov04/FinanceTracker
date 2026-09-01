@@ -14,6 +14,14 @@ var connectionString = builder.Configuration
 
 Console.WriteLine($"CONNECTION STRING: [{connectionString}]");
 
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = "localhost:6379";
+    options.InstanceName = "FinanceTracker:";
+});
+
+
+
 var jwtSettings = builder.Configuration
     .GetSection("JwtSettings")
     .Get<JwtSettings>();
@@ -28,6 +36,17 @@ builder.Services.AddScoped<IJwtService, JwtService>();
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
+
+
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration =
+        builder.Configuration["Redis:ConnectionString"]
+        ?? "localhost:6379";
+
+    options.InstanceName = "FinanceTracker:";
+});
+
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

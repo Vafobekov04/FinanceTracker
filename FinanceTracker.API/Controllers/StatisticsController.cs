@@ -1,11 +1,11 @@
 ﻿using System.Security.Claims;
+using System.Text.Json;
 using FinanceTracker.Application.DTOs;
 using FinanceTracker.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Caching.Distributed;
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace FinanceTracker.API.Controllers;
 
@@ -14,7 +14,6 @@ namespace FinanceTracker.API.Controllers;
 [Authorize]
 public class StatisticsController : ControllerBase
 {
-
     private readonly ApplicationDbContext _context;
     private readonly IDistributedCache _cache;
 
@@ -33,16 +32,29 @@ public class StatisticsController : ControllerBase
     {
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-        if (userIdClaim == null)
-        {
-            return Unauthorized();
-        }
-
         if (!Guid.TryParse(userIdClaim, out var userId))
         {
             return Unauthorized();
         }
 
+        // Уникальный ключ кэша для пользователя и периода
+        var cacheKey = $"statistics:{userId}:{from}:{to}";
+
+        // 1. Проверяем Redis
+        var cachedData = await _cache.GetStringAsync(cacheKey);
+
+        if (cachedData != null)
+        {
+            var cachedResult =
+                JsonSerializer.Deserialize<StatisticsResponseDto>(cachedData);
+
+            if (cachedResult != null)
+            {
+                return Ok(cachedResult);
+            }
+        }
+
+        // 2. Если в Redis ничего нет — идём в PostgreSQL
         var query = _context.Transactions
             .AsNoTracking()
             .Where(t => t.UserId == userId);
@@ -94,51 +106,17 @@ public class StatisticsController : ControllerBase
             Categories = categories
         };
 
-        return Ok(result);
-    }
-    [HttpGet("monthly")]
-    public async Task<IActionResult> GetMonthlyStatistics(
-        int? year = null)
-    {
-        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        // 3. Сохраняем результат в Redis
+        var json = JsonSerializer.Serialize(result);
 
-        if (!Guid.TryParse(userIdClaim, out var userId))
-        {
-            return Unauthorized();
-        }
-
-        var selectedYear = year ?? DateTime.UtcNow.Year;
-
-        var transactions = await _context.Transactions
-            .AsNoTracking()
-            .Where(t =>
-                t.UserId == userId &&
-                t.CreatedAt.Year == selectedYear)
-            .GroupBy(t => t.CreatedAt.Month)
-            .Select(g => new
+        await _cache.SetStringAsync(
+            cacheKey,
+            json,
+            new DistributedCacheEntryOptions
             {
-                Month = g.Key,
-                Income = g
-                    .Where(t => t.Type == "Income")
-                    .Sum(t => (decimal?)t.Amount) ?? 0,
-
-                Expense = g
-                    .Where(t => t.Type == "Expense")
-                    .Sum(t => (decimal?)t.Amount) ?? 0
-            })
-            .OrderBy(x => x.Month)
-            .ToListAsync();
-
-        var result = transactions.Select(x => new MonthlyStatisticsDto
-        {
-            Year = selectedYear,
-            Month = x.Month,
-            Income = x.Income,
-            Expense = x.Expense
-        });
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5)
+            });
 
         return Ok(result);
     }
 }
-
-

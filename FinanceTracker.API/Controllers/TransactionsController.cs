@@ -1,4 +1,5 @@
-﻿using System.Security.Claims;
+﻿
+using System.Security.Claims;
 using FinanceTracker.API.DTOs;
 using FinanceTracker.Application.DTOs;
 using FinanceTracker.Domain.Entities;
@@ -32,11 +33,6 @@ public class TransactionsController : ControllerBase
     {
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-        if (userIdClaim == null)
-        {
-            return Unauthorized();
-        }
-
         if (!Guid.TryParse(userIdClaim, out var userId))
         {
             return Unauthorized();
@@ -67,7 +63,7 @@ public class TransactionsController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        // Очищаем кэш статистики после изменения данных
+        // Очищаем кэш статистики
         await _cache.RemoveAsync($"statistics:{userId}");
 
         return Ok(new TransactionResponseDto
@@ -86,11 +82,6 @@ public class TransactionsController : ControllerBase
     public async Task<IActionResult> GetMyTransactions()
     {
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-        if (userIdClaim == null)
-        {
-            return Unauthorized();
-        }
 
         if (!Guid.TryParse(userIdClaim, out var userId))
         {
@@ -164,11 +155,6 @@ public class TransactionsController : ControllerBase
     {
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-        if (string.IsNullOrEmpty(userIdClaim))
-        {
-            return Unauthorized();
-        }
-
         if (!Guid.TryParse(userIdClaim, out var userId))
         {
             return Unauthorized();
@@ -201,7 +187,7 @@ public class TransactionsController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        // Очищаем кэш статистики после изменения данных
+        // Очищаем кэш статистики
         await _cache.RemoveAsync($"statistics:{userId}");
 
         return Ok(new TransactionResponseDto
@@ -220,11 +206,6 @@ public class TransactionsController : ControllerBase
     public async Task<IActionResult> Delete(Guid id)
     {
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-        if (userIdClaim == null)
-        {
-            return Unauthorized();
-        }
 
         if (!Guid.TryParse(userIdClaim, out var userId))
         {
@@ -245,10 +226,9 @@ public class TransactionsController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        // Очищаем кэш статистики после изменения данных
+        // Очищаем кэш статистики
         await _cache.RemoveAsync($"statistics:{userId}");
 
         return Ok("Транзакция удалена.");
     }
 }
-
