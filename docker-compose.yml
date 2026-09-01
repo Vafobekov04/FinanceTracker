@@ -29,12 +29,12 @@ services:
     ports:
       - "8080:8080"
     environment:
-      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=finance_tracker;Username=postgres;Password=postgres"
-      Redis__ConnectionString: "redis:6379"
+        ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+        Redis__ConnectionString: "redis:6379"
 
-      JwtSettings__Key: "YOUR_SUPER_SECRET_KEY_123456789"
-      JwtSettings__Issuer: "FinanceTracker"
-      JwtSettings__Audience: "FinanceTracker"
+        JwtSettings__Key: ${JWT_KEY}
+        JwtSettings__Issuer: ${JWT_ISSUER}
+        JwtSettings__Audience: ${JWT_AUDIENCE}
     depends_on:
       - postgres
       - redis
