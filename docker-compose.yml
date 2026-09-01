@@ -14,14 +14,23 @@ services:
       - postgres_data:/var/lib/postgresql
 
   redis:
-    image: redis:latest
+    image: redis:7
     container_name: finance_tracker_redis
     restart: always
     ports:
       - "6379:6379"
-    volumes:
-      - redis_data:/data
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: finance_tracker_api
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - redis
 
 volumes:
   postgres_data:
-  redis_data:
